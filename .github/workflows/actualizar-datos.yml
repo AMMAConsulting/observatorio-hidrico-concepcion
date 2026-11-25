@@ -61,6 +61,14 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
+        # La API de GitHub a veces responde 500 al lanzar la pasada (25-11-2026):
+        # la cadena se cortaba y el cron de respaldo tardaba horas en llegar.
+        # Se reintenta hasta 5 veces antes de darla por rota.
         run: |
           sleep 840
-          gh workflow run actualizar-datos.yml -R "$GITHUB_REPOSITORY" --ref main
+          for i in 1 2 3 4 5; do
+            if gh workflow run actualizar-datos.yml -R "$GITHUB_REPOSITORY" --ref main; then exit 0; fi
+            echo "No se pudo lanzar la siguiente pasada (intento $i); reintento en 20 s"
+            sleep 20
+          done
+          exit 1
